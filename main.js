@@ -14,6 +14,7 @@ javascript:(async function(){
         let foundIndex = -1;
 
         $elements.each(function (index) {
+            console.log("oiii>> ", $(this).text().trim())
             if ($(this).text().trim() === playerName) {
                 foundIndex = index + 1;   
                 return false;            
@@ -21,6 +22,7 @@ javascript:(async function(){
         });
 
         if (foundIndex > -1) {
+            console.log("achou")
             const url = $html
                 .find(`#content_value > table > tbody > tr > td:nth-child(2) > form > table:nth-child(3) > tbody > tr:nth-child(${foundIndex + 1}) > td:nth-child(1) > a`)
                 .attr("href");
@@ -46,7 +48,6 @@ javascript:(async function(){
         return 0;
     }
 }
-
 
 
     async function cada_mp(player, msg, subj) {
