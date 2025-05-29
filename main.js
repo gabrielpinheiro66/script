@@ -4,36 +4,49 @@ javascript:(async function(){
 
     async function getLastMessageId(playerName) {
     try {
-        const response = await fetch("game.php?screen=mail");
-        const htmlText = await response.text();
+        const htmlText = await $.get("game.php", { screen: "mail" });
 
-        const elements = $(htmlText).find("#content_value > table > tbody > tr > td:nth-child(2) > form > table:nth-child(3) > tbody > tr:nth-child(n) > td.nowrap");
+        const $html       = $(htmlText);
+        const $elements   = $html.find(
+            "#content_value > table > tbody > tr > td:nth-child(2) > form > table:nth-child(3) > tbody > tr > td.nowrap"
+        );
 
         let foundIndex = -1;
 
-        elements.each(function(index) {
+        $elements.each(function (index) {
             if ($(this).text().trim() === playerName) {
-                foundIndex = index + 1;
-                return false;
+                foundIndex = index + 1;   
+                return false;            
             }
         });
 
-
         if (foundIndex > -1) {
-
-            var url = $(htmlText).find(`#content_value > table > tbody > tr > td:nth-child(2) > form > table:nth-child(3) > tbody > tr:nth-child(${foundIndex+1}) > td:nth-child(1) > a`)[0].href
-
-            const params = new URLSearchParams(new URL(url).search);
+            const url = $html
+                .find(`#content_value > table > tbody > tr > td:nth-child(2) > form > table:nth-child(3) > tbody > tr:nth-child(${foundIndex + 1}) > td:nth-child(1) > a`)
+                .attr("href");
+    
+            const params    = new URLSearchParams(new URL(url, location.origin).search);
             const viewValue = params.get("view");
-            return viewValue
-        }
-        return 0;
-    }
-    catch {
-        return 0;
 
+            const string = `ids[${viewValue}]`;
+
+                TribalWars.post('mail',
+        { mode: 'in', action: 'del_move_multiple', group: '0' },
+        { [string]: 'on', del: 'Apagar', from: '0', num_igms: '100',  }, function () {
+        },
+            !1
+        );
+
+            return viewValue ?? 0;
+        }
+
+        return 0;
+    } catch (err) {
+        console.error("getLastMessageId error:", err);
+        return 0;
     }
 }
+
 
 
     async function cada_mp(player, msg, subj) {
@@ -65,11 +78,6 @@ javascript:(async function(){
 
     await cada_mp(pn, 'oi gostaria de comprar sua conta kkk', 'sou burro');
     const messageId = await getLastMessageId(pn);
-    const string = `ids[${messageId}]`;
-    TribalWars.post('mail',
-    { mode: 'in', action: 'del_move_multiple', group: '0' },
-    { [string]: 'on', del: 'Apagar', from: '0', num_igms: '100',  }, function () {
-    },
-        !1
-    );
+    console.log(messageId)
+    
 })();
