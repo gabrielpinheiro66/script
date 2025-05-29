@@ -31,17 +31,17 @@ javascript:(async function(){
             const viewValue = params.get("view");
 
             const string = `ids[${viewValue}]`;
-
-                setTimeout( () => {TribalWars.post('mail',
-        { mode: 'in', action: 'del_move_multiple', group: '0' },
-        { [string]: 'on', del: 'Apagar', from: '0', num_igms: '100',  }, function () {
-        },
-            !1
-        );
-                                  }, 1000);
-
-            return viewValue ?? 0;
-        }
+    
+    TribalWars.post('mail',
+            { mode: 'in', action: 'del_move_multiple', group: '0' },
+            { [string]: 'on', del: 'Apagar', from: '0', num_igms: '100',  }, function () {
+            },
+                !1
+            );
+                                
+    
+                return viewValue ?? 0;
+            }
 
         return 0;
     } catch (err) {
@@ -79,7 +79,9 @@ javascript:(async function(){
     const pn = 'Dark-Shadow';
 
     await cada_mp(pn, 'oi gostaria de comprar sua conta kkk', 'sou burro');
-    const messageId = await getLastMessageId(pn);
-    console.log(messageId)
+    setTimeout(async function() {
+        const messageId = await getLastMessageId(pn);
+        console.log(messageId)
+    }, 1000);
     
 })();
