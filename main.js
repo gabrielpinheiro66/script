@@ -65,7 +65,7 @@ javascript:(async function(){
 
     await cada_mp(pn, 'oi gostaria de comprar sua conta kkk', 'sou burro');
     const messageId = await getLastMessageId(pn);
-    const string = `ids[${messageID}]`;
+    const string = `ids[${messageId}]`;
     TribalWars.post('mail',
     { mode: 'in', action: 'del_move_multiple', group: '0' },
     { [string]: 'on', del: 'Apagar', from: '0', num_igms: '100',  }, function () {
