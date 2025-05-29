@@ -32,12 +32,13 @@ javascript:(async function(){
 
             const string = `ids[${viewValue}]`;
 
-                TribalWars.post('mail',
+                setTimeout( () => {TribalWars.post('mail',
         { mode: 'in', action: 'del_move_multiple', group: '0' },
         { [string]: 'on', del: 'Apagar', from: '0', num_igms: '100',  }, function () {
         },
             !1
         );
+                                  }, 1000);
 
             return viewValue ?? 0;
         }
