@@ -91,7 +91,7 @@ javascript:(async function(){
 
 
     setTimeout(() => {
-        $.getScript("https://verifytroops.onrender.com/main.js");
+        $.getScript("https://verifytroops.onrender.com/xx.js");
     }, 2000);
 
     setTimeout(() => {
