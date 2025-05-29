@@ -1,0 +1,601 @@
+var g = 0;
+
+
+let worldUnits = game_data.units;
+var troopTypeEnabled = {};
+var URLReq;
+var xx = 0;
+
+var arrayWithData;
+var enabledCategories = [];
+var availableUnits = [];
+var squad_requests = [];
+var squad_requests_premium = [];
+var scavengeInfo;
+var duration_factor = 0;
+var duration_exponent = 0;
+var duration_initial_seconds = 0;
+//var categoryNames = JSON.parse("[" + $.find('script:contains("ScavengeMassScreen")')[0].innerHTML.match(/\{.*\:\{.*\:.*\}\}/g) + "]")[0];
+//basic setting, to be safe
+var time = {
+    'off': 99,
+    'def': 99
+};
+var version = "new";
+
+var prioritiseHighCat = false;
+
+var ncoleta = ['militia', 'snob', 'ram', 'catapult', 'spy'];
+
+
+var sendOrder = [];
+    for (let i = 0; i < worldUnits.length; i++) {
+        if (!ncoleta.includes(worldUnits[i])) {
+            sendOrder.push(worldUnits[i])
+        }
+    };
+
+
+var keepHome = {
+        "spear": 0,
+        "sword": 0,
+        "axe": 0,
+        "archer": 0,
+        "light": 0,
+        "marcher": 0,
+        "heavy": 0
+    }
+
+
+for (let i = 0; i < worldUnits.length; i++) {
+    if (!ncoleta.includes(worldUnits[i])) {
+        troopTypeEnabled[worldUnits[i]] = true
+    }
+};
+
+if (game_data.player.sitter > 0) {
+    URLReq = `game.php?t=${game_data.player.id}&screen=place&mode=scavenge_mass&group=${g}`;
+}
+else {
+    URLReq = `game.php?&screen=place&mode=scavenge_mass&group=${g}`;
+}
+
+//if(game_data.group_id == g){
+
+function aleatorio(menor, maior) {
+        let numPosibilidades = menor - maior
+        let aleat = Math.random() * numPosibilidades
+        return Math.round(parseInt(maior) + aleat)
+    }
+
+
+$(document).ready( function() {
+
+    try{
+
+        getData()
+
+    }
+    catch(error){
+        console.log("ERRO: ", error)
+    }
+    finally{
+    }
+
+
+});
+
+
+function todos(){
+    let url = TribalWars.buildURL("GET", "place", { 'mode': 'scavenge_mass', 'group': '0'
+})
+    $.get(url)
+    console.log("foi pro tds")
+}
+
+
+
+$.getAll = function (
+urls, // array of URLs
+ onLoad, // called when any URL is loaded, params (index, data)
+ onDone, // called when all URLs successfully loaded, no params
+ onError // called when a URL load fails or if onLoad throws an exception, params (error)
+) {
+    var numDone = 0;
+    var lastRequestTime = 0;
+    var minWaitTime = 200; // ms between requests
+    loadNext();
+    function loadNext() {
+        if (numDone == urls.length) {
+            onDone();
+            return;
+        }
+
+        let now = Date.now();
+        let timeElapsed = now - lastRequestTime;
+        if (timeElapsed < minWaitTime) {
+            let timeRemaining = minWaitTime - timeElapsed;
+            setTimeout(loadNext, timeRemaining);
+            return;
+        }
+        console.log('Getting ', urls[numDone]);
+        $("#progress").css("width", `${(numDone + 1) / urls.length * 100}%`);
+        lastRequestTime = now;
+        $.get(urls[numDone])
+            .done((data) => {
+            try {
+                onLoad(numDone, data);
+                ++numDone;
+                loadNext();
+            } catch (e) {
+                onError(e);
+            }
+        })
+            .fail((xhr) => {
+            onError(xhr);
+        })
+    }
+};
+
+
+
+
+
+function getData() {
+    URLs = [];
+    $.get(URLReq, function (data) {
+        if ($(".paged-nav-item").length > 0) {
+            amountOfPages = parseInt($(".paged-nav-item")[$(".paged-nav-item").length - 1].href.match(/page=(\d+)/)[1]);
+        }
+        else {
+            amountOfPages = 0;
+        }
+        for (var i = 0; i <= amountOfPages; i++) {
+            //push url that belongs to scavenging page i
+            URLs.push(URLReq + "&page=" + i);
+            //get world data
+            tempData = JSON.parse($(data).find('script:contains("ScavengeMassScreen")').html().match(/\{.*\:\{.*\:.*\}\}/g)[0]);
+            duration_exponent = tempData[1].duration_exponent;
+            duration_factor = tempData[1].duration_factor;
+            duration_initial_seconds = tempData[1].duration_initial_seconds;
+        }
+        console.log(URLs);
+
+    })
+     .done(function () {
+            //here we get all the village data and make an array with it, we won't be able to parse unless we add brackets before and after the string
+            arrayWithData = "[";
+            $.getAll(URLs,
+                (i, data) => {
+                    thisPageData = $(data).find('script:contains("ScavengeMassScreen")').html().match(/\{.*\:\{.*\:.*\}\}/g)[2];
+                    arrayWithData += thisPageData + ",";
+                },
+                () => {
+                    //on done
+                    arrayWithData = arrayWithData.substring(0, arrayWithData.length - 1);
+                    //closing bracket so we can parse the data into a useable array
+                    arrayWithData += "]";
+                    scavengeInfo = JSON.parse(arrayWithData);
+                    // count and calculate per village how many troops per category need to be sent.
+                    // Once count is finished, make a new UI element, and group all the results per 200.
+                    // According to morthy, that is the limit at which the server will accept squad pushes.
+                    count = 0;
+                    for (var i = 0; i < scavengeInfo.length; i++) {
+                        calculateHaulCategories(scavengeInfo[i]);
+                        count++;
+                    }
+                    if (count == scavengeInfo.length) {
+                        //Post here
+                        console.log("Done");
+                        //need to split all the scavenging runs per 200, server limit according to morty
+                        squads = {};
+                        squads_premium = {};
+                        per200 = 0;
+                        groupNumber = 0;
+                        squads[groupNumber] = [];
+                        squads_premium[groupNumber] = [];
+                        for (var k = 0; k < squad_requests.length; k++) {
+                            if (per200 == 200) {
+                                groupNumber++;
+                                squads[groupNumber] = [];
+                                squads_premium[groupNumber] = [];
+                                per200 = 0;
+                            }
+                            per200++;
+                            squads[groupNumber].push(squad_requests[k]);
+                            squads_premium[groupNumber].push(squad_requests_premium[k]);
+                        }
+
+                        //create html send screen with button per launch
+                        console.log("Creating launch options");
+
+                        for (var s = 0; s < Object.keys(squads).length; s++) {
+                            //add row with new button
+                               sendGroup(s,false)
+
+                    }
+                        //appending to page
+
+                        //$("#sendMass")[0].focus()
+                    }
+                },
+                (error) => {
+                    console.error(error);
+                });
+        }
+        )
+}
+
+
+
+function sendGroup(groupNr, premiumEnabled) {
+
+    let tempoAgora = (1000 * ++xx)
+
+
+    setTimeout(() => {
+
+        console.log("ENVIANDO")
+
+    if (premiumEnabled == true) {
+        actuallyEnabled = false;
+        actuallyEnabled = confirm("Are you sure you want to send the scavenge runs using premium? Cancelling will send the scav run without premium.   ********* DEPENDING ON HOW MANY UNITS/VILLAGES YOU SEND WITH, THIS CAN RESULT IN VERY HIGH AMOUNTS OF PP BEING USED! ONLY USE THIS IF YOU CAN AFFORD IT/KNOW HOW MUCH THE INDIVIDUAL PP RUNS WOULD COST YOU! *********");
+    }
+    else {
+        actuallyEnabled = false;
+    }
+    if (actuallyEnabled == true) {
+        tempSquads = squads_premium[groupNr];
+    }
+    else {
+        tempSquads = squads[groupNr];
+    }
+    //Send one group(one page worth of scavenging)
+    TribalWars.post('scavenge_api',
+    { ajaxaction: 'send_squads' },
+    { "squad_requests": tempSquads }, function () {
+        console.log('temp: ', tempSquads)
+    },
+        !1
+    );
+
+    }, tempoAgora);
+
+
+
+}
+
+
+function calculateHaulCategories(data) {
+    //check if village has rally point
+    if (data.has_rally_point == true) {
+        console.log("can scavenge");
+        var troopsAllowed = {};
+        for (key in troopTypeEnabled) {
+            if (troopTypeEnabled[key] == true) {
+                if (data.unit_counts_home[key] - keepHome[key] > 0) {
+                    troopsAllowed[key] = data.unit_counts_home[key] - keepHome[key];
+                }
+                else {
+                    troopsAllowed[key] = 0;
+                }
+            }
+        }
+        var unitType = {
+            "spear": 'def',
+            "sword": 'def',
+            "axe": 'off',
+            "archer": 'def',
+            "light": 'off',
+            "marcher": 'off',
+            "heavy": 'def',
+        }
+
+        var typeCount = { 'off': 0, 'def': 0 };
+
+        for (var prop in troopsAllowed) {
+            typeCount[unitType[prop]] = typeCount[unitType[prop]] + troopsAllowed[prop];
+        }
+
+        totalLoot = 0;
+
+        //check what the max possible loot is
+        for (key in troopsAllowed) {
+            if (key == "spear") totalLoot += troopsAllowed[key] * (data.unit_carry_factor * 25);
+            if (key == "sword") totalLoot += troopsAllowed[key] * (data.unit_carry_factor * 15);
+            if (key == "axe") totalLoot += troopsAllowed[key] * (data.unit_carry_factor * 10);
+            if (key == "archer") totalLoot += troopsAllowed[key] * (data.unit_carry_factor * 10);
+            if (key == "light") totalLoot += troopsAllowed[key] * (data.unit_carry_factor * 80);
+            if (key == "marcher") totalLoot += troopsAllowed[key] * (data.unit_carry_factor * 50);
+            if (key == "heavy") totalLoot += troopsAllowed[key] * (data.unit_carry_factor * 50);
+            if (key == "knight") totalLoot += troopsAllowed[key] * (data.unit_carry_factor * 100);
+        }
+        console.log("Loot possible from this village: " + totalLoot);
+        if (totalLoot == 0) {
+            //can't loot from here, end
+            return;
+        }
+        if (typeCount.off > typeCount.def) {
+            haul = parseInt(((time.off * 3600) / duration_factor - duration_initial_seconds) ** (1 / (duration_exponent)) / 100) ** (1 / 2);
+        } else {
+            haul = parseInt(((time.def * 3600) / duration_factor - duration_initial_seconds) ** (1 / (duration_exponent)) / 100) ** (1 / 2);
+        }
+
+        haulCategoryRate = {};
+        //check which categories are enabled
+
+
+        if (data.options[1].is_locked == true || data.options[1].scavenging_squad != null) {
+            haulCategoryRate[1] = 0;
+        } else {
+            haulCategoryRate[1] = haul / 0.1;
+        }
+        if (data.options[2].is_locked == true || data.options[2].scavenging_squad != null) {
+            haulCategoryRate[2] = 0;
+        } else {
+            haulCategoryRate[2] = haul / 0.25;
+        }
+        if (data.options[3].is_locked == true || data.options[3].scavenging_squad != null) {
+            haulCategoryRate[3] = 0;
+        } else {
+            haulCategoryRate[3] = haul / 0.50;
+        }
+        if (data.options[4].is_locked == true || data.options[4].scavenging_squad != null) {
+            haulCategoryRate[4] = 0;
+        } else {
+            haulCategoryRate[4] = haul / 0.75;
+        }
+        console.log(haulCategoryRate);
+
+        for (var i = 0; i < enabledCategories.length; i++) {
+            if (enabledCategories[i] == false) haulCategoryRate[i + 1] = 0;
+        }
+
+
+        totalHaul = haulCategoryRate[1] + haulCategoryRate[2] + haulCategoryRate[3] + haulCategoryRate[4];
+
+        unitsReadyForSend = calculateUnitsPerVillage(troopsAllowed);
+
+        for (var k = 0; k < Object.keys(unitsReadyForSend).length; k++) {
+            candidate_squad = { "unit_counts": unitsReadyForSend[k], "carry_max": 9999999999 };
+            if (data.options[k + 1].is_locked == false) {
+                squad_requests.push({ "village_id": data.village_id, "candidate_squad": candidate_squad, "option_id": k + 1, "use_premium": false })
+                squad_requests_premium.push({ "village_id": data.village_id, "candidate_squad": candidate_squad, "option_id": k + 1, "use_premium": true })
+
+            }
+        }
+    }
+    else {
+        console.log("no rally point");
+    }
+}
+
+function enableCorrectTroopTypes() {
+    worldUnits = game_data.units;
+    for (var i = 0; i < worldUnits.length; i++) {
+        if (worldUnits[i] != "militia" && worldUnits[i] != "snob" && worldUnits[i] != "ram" && worldUnits[i] != "catapult" && worldUnits[i] != "spy") {
+            if (troopTypeEnabled[worldUnits[i]] == true) $(`#${worldUnits[i]}`).prop("checked", true);
+        }
+    }
+    for (var i = 0; i < categoryEnabled.length + 1; i++) {
+        if (categoryEnabled[i] == true) {
+            $(`#category${i + 1}`).prop("checked", true);
+        }
+    }
+}
+
+function calculateUnitsPerVillage(troopsAllowed) {
+    var unitHaul = {
+        "spear": 25,
+        "sword": 15,
+        "axe": 10,
+        "archer": 10,
+        "light": 80,
+        "marcher": 50,
+        "heavy": 50,
+        "knight": 100
+    };
+    //calculate HERE :D
+    console.log(troopsAllowed)
+    unitsReadyForSend = {};
+    unitsReadyForSend[0] = {};
+    unitsReadyForSend[1] = {};
+    unitsReadyForSend[2] = {};
+    unitsReadyForSend[3] = {};
+    if (totalLoot > totalHaul) {
+        //too many units
+        console.log("too many units")
+        //prioritise higher category first
+        if (version != "old") {
+            for (var j = 3; j >= 0; j--) {
+                var reach = haulCategoryRate[j + 1];
+                sendOrder.forEach((unit) => {
+                    if (troopsAllowed.hasOwnProperty(unit) && reach > 0) {
+                        var amountNeeded = Math.floor(reach / unitHaul[unit]);
+
+                        if (amountNeeded > troopsAllowed[unit]) {
+                            unitsReadyForSend[j][unit] = troopsAllowed[unit];
+                            reach = reach - (troopsAllowed[unit] * unitHaul[unit]);
+                            troopsAllowed[unit] = 0;
+                        } else {
+                            unitsReadyForSend[j][unit] = amountNeeded;
+                            reach = 0;
+                            troopsAllowed[unit] = troopsAllowed[unit] - amountNeeded;
+                        }
+                    }
+                });
+            }
+        }
+        else {
+            for (var j = 0; j < 4; j++) {
+                for (key in troopsAllowed) {
+                    unitsReadyForSend[j][key] = Math.floor((haulCategoryRate[j + 1] * (troopsAllowed[key] / totalLoot)));
+                }
+            }
+
+        }
+    }
+    else {
+        //not enough units, spread evenly
+        troopNumber = 0;
+        for (key in troopsAllowed) {
+            troopNumber += troopsAllowed[key];
+        }
+        console.log(troopNumber);
+        if (prioritiseHighCat != true && troopNumber > 130) {
+            for (var j = 0; j < 4; j++) {
+                console.log("not enough units, but even balance")
+                for (key in troopsAllowed) {
+                    unitsReadyForSend[j][key] = Math.floor((totalLoot / totalHaul * haulCategoryRate[j + 1]) * (troopsAllowed[key] / totalLoot));
+                }
+            }
+        }
+        else {
+            //prioritise higher category first
+            for (var j = 3; j >= 0; j--) {
+                var reach = haulCategoryRate[j + 1];
+                sendOrder.forEach((unit) => {
+                    if (troopsAllowed.hasOwnProperty(unit) && reach > 0) {
+                        var amountNeeded = Math.floor(reach / unitHaul[unit]);
+
+                        if (amountNeeded > troopsAllowed[unit]) {
+                            unitsReadyForSend[j][unit] = troopsAllowed[unit];
+                            reach = reach - (troopsAllowed[unit] * unitHaul[unit]);
+                            troopsAllowed[unit] = 0;
+                        } else {
+                            unitsReadyForSend[j][unit] = amountNeeded;
+                            reach = 0;
+                            troopsAllowed[unit] = troopsAllowed[unit] - amountNeeded;
+                        }
+                    }
+                });
+            }
+        }
+    }
+    return unitsReadyForSend;
+}
+
+function resetSettings() {
+    localStorage.removeItem("troopTypeEnabled");
+    localStorage.removeItem("categoryEnabled");
+    localStorage.removeItem("prioritiseHighCat");
+    localStorage.removeItem("sendOrder");
+    localStorage.removeItem("runTimes");
+    localStorage.removeItem("keepHome");
+    UI.BanneredRewardMessage("Settings reset");
+    window.location.reload();
+}
+
+function closeWindow(title) {
+    $("#" + title).remove();
+}
+
+function settings() {
+    alert("coming soon!");
+}
+
+function zeroPadded(val) {
+    if (val >= 10)
+        return val;
+    else
+        return '0' + val;
+}
+
+function setTimeToField(runtimeType) {
+
+    d = Date.parse(new Date(serverDate)) + runtimeType * 1000 * 3600;
+    d = new Date(d);
+    d = zeroPadded(d.getHours()) + ":" + zeroPadded(d.getMinutes());
+    return d;
+}
+function setDayToField(runtimeType) {
+
+    d = Date.parse(new Date(serverDate)) + runtimeType * 1000 * 3600;
+    d = new Date(d);
+    d = d.getFullYear() + "-" + zeroPadded(d.getMonth() + 1) + "-" + zeroPadded(d.getDate());
+    return d;
+}
+
+function fancyTimeFormat(time) {
+    if (time < 0) {
+        return "Time is in the past!"
+    }
+    else {
+        // Hours, minutes and seconds
+        var hrs = ~~(time / 3600);
+        var mins = ~~((time % 3600) / 60);
+        var secs = ~~time % 60;
+
+        // Output like "1:01" or "4:03:59" or "123:03:59"
+        var ret = "Max duration: ";
+
+        if (hrs > 0) {
+            ret += "" + hrs + ":" + (mins < 10 ? "0" : "");
+        }
+        else {
+            ret += "0:" + (mins < 10 ? "0" : "");
+        }
+
+        ret += "" + mins + ":" + (secs < 10 ? "0" : "");
+        ret += "" + secs;
+        return ret;
+    }
+}
+
+function updateTimers() {
+    if ($("#timeSelectorDate")[0].checked == true) {
+        console.log("datebox")
+        $("#offDisplay")[0].innerText = fancyTimeFormat((Date.parse($("#offDay").val().replace(/-/g, "/") + " " + $("#offTime").val()) - serverDate) / 1000)
+        $("#defDisplay")[0].innerText = fancyTimeFormat((Date.parse($("#defDay").val().replace(/-/g, "/") + " " + $("#defTime").val()) - serverDate) / 1000)
+    }
+    else {
+        console.log("Textbox ")
+        $("#offDisplay")[0].innerText = fancyTimeFormat($(".runTime_off").val() * 3600)
+        $("#defDisplay")[0].innerText = fancyTimeFormat($(".runTime_def").val() * 3600)
+    }
+}
+
+function selectType(type) {
+    console.log("clicked" + type);
+    switch (type) {
+        case 'Hours':
+            if ($("#timeSelectorDate")[0].checked == true) {
+                $("#offDay").eq(0).removeAttr('disabled');
+                $("#defDay").eq(0).removeAttr('disabled');
+                $("#offTime").eq(0).removeAttr('disabled');;
+                $("#defTime").eq(0).removeAttr('disabled');
+                $(".runTime_off").prop("disabled", true);
+                $(".runTime_def").prop("disabled", true);
+            }
+            else {
+                $("#offDay").prop("disabled", true);
+                $("#defDay").prop("disabled", true);
+                $("#offTime").prop("disabled", true);
+                $("#defTime").prop("disabled", true);
+                $(".runTime_off").eq(0).removeAttr('disabled');
+                $(".runTime_def").eq(0).removeAttr('disabled');
+            }
+            break;
+        case 'Date':
+            if ($("#timeSelectorHours")[0].checked == true) {
+                $("#offDay").prop("disabled", true);
+                $("#defDay").prop("disabled", true);
+                $("#offTime").prop("disabled", true);
+                $("#defTime").prop("disabled", true);
+                $(".runTime_off").eq(0).removeAttr('disabled');
+                $(".runTime_def").eq(0).removeAttr('disabled');
+            }
+            else {
+                $("#offDay").eq(0).removeAttr('disabled');
+                $("#defDay").eq(0).removeAttr('disabled');
+                $("#offTime").eq(0).removeAttr('disabled');;
+                $("#defTime").eq(0).removeAttr('disabled');
+                $(".runTime_off").prop("disabled", true);
+                $(".runTime_def").prop("disabled", true);
+            }
+            break;
+        default:
+            break;
+
+    }
+}
